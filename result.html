@@ -48,6 +48,55 @@
       border-radius: 8px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .image-item {
+      background: #fff;
+      padding: 8px;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .image-item img {
+      width: 100%;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .image-item img:hover {
+      transform: scale(1.05);
+    }
+    .download-btn {
+      margin-top: 8px;
+      background: #0077cc;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .download-btn:hover {
+      background: #005fa3;
+    }
+    .lightbox {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+    }
+    .lightbox img {
+      max-width: 90%;
+      max-height: 90%;
+    }
   </style>
 </head>
 <body>
@@ -58,7 +107,9 @@
     <button onclick="search('videos')" id="tab-videos">Videos</button>
   </div>
   <div id="results"></div>
-
+  <div class="lightbox" id="lightbox" onclick="this.style.display='none'">
+    <img id="lightbox-img" src="">
+  </div>
   <script>
     const query = new URLSearchParams(window.location.search).get("q");
     const apiKey = "AIzaSyBp9QcR8mKYwhBCiS2X56y_kGnRuUOb8gA";
@@ -73,10 +124,8 @@
       else if (type === 'videos') searchType = '&siteSearch=youtube.com';
 
       const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}${searchType}&key=${apiKey}&cx=${cx}`;
-
       const res = await fetch(url);
       const data = await res.json();
-
       const resultsContainer = document.getElementById("results");
       resultsContainer.innerHTML = "";
 
@@ -85,12 +134,61 @@
         return;
       }
 
-      data.items.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "result-item";
-        div.innerHTML = `<a href="${item.link}" target="_blank"><h3>${item.title}</h3><p>${item.snippet}</p></a>`;
-        resultsContainer.appendChild(div);
-      });
+      if (type === 'images') {
+        const grid = document.createElement("div");
+        grid.className = "image-grid";
+        data.items.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "image-item";
+          const img = document.createElement("img");
+          img.src = item.link;
+          img.alt = item.title;
+          img.onclick = () => {
+            document.getElementById("lightbox-img").src = item.link;
+            document.getElementById("lightbox").style.display = 'flex';
+          };
+          const downloadBtn = document.createElement("a");
+          downloadBtn.href = item.link;
+          downloadBtn.download = "";
+          downloadBtn.innerHTML = "Download";
+          downloadBtn.className = "download-btn";
+          div.appendChild(img);
+          div.appendChild(downloadBtn);
+          grid.appendChild(div);
+        });
+        resultsContainer.appendChild(grid);
+
+      } else if (type === 'videos') {
+        data.items.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "result-item";
+
+          const videoIdMatch = item.link.match(/v=([^&]+)/);
+          if (videoIdMatch) {
+            const videoId = videoIdMatch[1];
+            const iframe = document.createElement("iframe");
+            iframe.width = "100%";
+            iframe.height = "315";
+            iframe.src = `https://www.youtube.com/embed/${videoId}`;
+            iframe.frameBorder = "0";
+            iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+            iframe.allowFullscreen = true;
+            div.appendChild(iframe);
+          } else {
+            div.innerHTML = `<a href="${item.link}" target="_blank"><h3>${item.title}</h3><p>${item.snippet}</p></a>`;
+          }
+
+          resultsContainer.appendChild(div);
+        });
+
+      } else {
+        data.items.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "result-item";
+          div.innerHTML = `<a href="${item.link}" target="_blank"><h3>${item.title}</h3><p>${item.snippet}</p></a>`;
+          resultsContainer.appendChild(div);
+        });
+      }
     }
 
     window.onload = () => search('all');
