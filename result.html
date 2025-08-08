@@ -78,8 +78,6 @@
       border-radius: 5px;
       cursor: pointer;
       font-size: 0.9rem;
-      text-decoration: none;
-      display: inline-block;
     }
     .download-btn:hover {
       background: #005fa3;
@@ -112,32 +110,39 @@
   </div>
   <script>
     const query = new URLSearchParams(window.location.search).get("q");
+    const filterEnabled = new URLSearchParams(window.location.search).get("filter") === "true";
+    const forbiddenWords = ["porn", "sex", "nude", "nsfw", "violence", "blood", "gore", "xxx", "explicit", "adult", "rape"];
+    
+    function isClean(text) {
+      if (!filterEnabled) return true;
+      const lower = text.toLowerCase();
+      return !forbiddenWords.some(word => lower.includes(word));
+    }
+
     const apiKey = "AIzaSyCqN9W7m4jm6y8F6aV-WP4EoD7SDVCuuQs";
     const cx = "d7bccf6a3c5e441a3";
 
     async function search(type) {
       document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
       document.getElementById(`tab-${type}`).classList.add('active');
-
       let searchType = '';
       if (type === 'images') searchType = '&searchType=image';
       else if (type === 'videos') searchType = '&siteSearch=youtube.com';
-
       const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}${searchType}&key=${apiKey}&cx=${cx}`;
       const res = await fetch(url);
       const data = await res.json();
       const resultsContainer = document.getElementById("results");
       resultsContainer.innerHTML = "";
-
       if (!data.items) {
         resultsContainer.innerHTML = '<p>No results found.</p>';
         return;
       }
-
       if (type === 'images') {
         const grid = document.createElement("div");
         grid.className = "image-grid";
         data.items.forEach(item => {
+          if (!isClean(item.title) || !isClean(item.link)) return;
+
           const div = document.createElement("div");
           div.className = "image-item";
           const img = document.createElement("img");
@@ -157,32 +162,10 @@
           grid.appendChild(div);
         });
         resultsContainer.appendChild(grid);
-
-      } else if (type === 'videos') {
-        data.items.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "result-item";
-
-          const videoIdMatch = item.link.match(/v=([^&]+)/);
-          if (videoIdMatch) {
-            const videoId = videoIdMatch[1];
-            const iframe = document.createElement("iframe");
-            iframe.width = "100%";
-            iframe.height = "315";
-            iframe.src = `https://www.youtube.com/embed/${videoId}`;
-            iframe.frameBorder = "0";
-            iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-            iframe.allowFullscreen = true;
-            div.appendChild(iframe);
-          } else {
-            div.innerHTML = `<a href="${item.link}" target="_blank"><h3>${item.title}</h3><p>${item.snippet}</p></a>`;
-          }
-
-          resultsContainer.appendChild(div);
-        });
-
       } else {
         data.items.forEach(item => {
+          if (!isClean(item.title) || !isClean(item.snippet || '') || !isClean(item.link)) return;
+
           const div = document.createElement("div");
           div.className = "result-item";
           div.innerHTML = `<a href="${item.link}" target="_blank"><h3>${item.title}</h3><p>${item.snippet}</p></a>`;
