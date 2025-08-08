@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -51,21 +51,147 @@
     .search-input::placeholder {
       color: #bbb;
     }
+    .overlay-box {
+      background: #111;
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 90%;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+      animation: fadeIn 0.5s ease;
+    }
+    .overlay-button {
+      padding: 10px 25px;
+      margin: 10px 5px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    .yes-btn {
+      background-color: #00f7ff;
+      color: #000;
+    }
+    .no-btn {
+      background-color: #ff0055;
+      color: #fff;
+    }
+    .minor-btn {
+      background-color: #ffdd00;
+      color: #000;
+    }
+    .adult-btn {
+      background-color: #00cc88;
+      color: #fff;
+    }
+    #support-message {
+      display: none;
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #ff4d4d;
+      color: #fff;
+      font-weight: bold;
+      border-radius: 8px;
+      text-shadow: 0 0 5px #fff;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">nano</div>
     <form id="searchForm">
-      <input type="text" class="search-input" id="searchInput" placeholder="Search anything..." required />
+      <input type="text" class="search-input" id="searchInput" placeholder="ابحث عن أي شيء..." required />
+      <div id="support-message">أنت لست وحدك، يوجد من يهتم بك ♥ إذا كنت تفكر بالانتحار، تواصل مع من تحب أو اطلب المساعدة.</div>
     </form>
   </div>
 
+  <!-- نافذة الموافقة -->
+  <div id="consentOverlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+    <div class="overlay-box">
+      <h2 style="margin-bottom: 20px; color: #00f7ff;">هل توافق على تصفية المحتوى الضار أثناء استخدام الموقع؟</h2>
+      <button onclick="acceptContent()" class="overlay-button yes-btn">أوافق</button>
+      <button onclick="rejectContent()" class="overlay-button no-btn">لا أوافق</button>
+    </div>
+  </div>
+
+  <!-- سؤال العمر -->
+  <div id="ageCheck" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 9999;">
+    <div class="overlay-box">
+      <h2 style="margin-bottom: 20px; color: #ffdd00;">هل عمرك أقل من 18 سنة؟</h2>
+      <button onclick="setMinor(true)" class="overlay-button minor-btn">نعم</button>
+      <button onclick="setMinor(false)" class="overlay-button adult-btn">لا</button>
+    </div>
+  </div>
+
   <script>
+    const overlay = document.getElementById("consentOverlay");
+    const ageCheck = document.getElementById("ageCheck");
+    const supportMessage = document.getElementById("support-message");
+    const input = document.getElementById("searchInput");
+    let filterEnabled = false;
+
+    function acceptContent() {
+      filterEnabled = true;
+      localStorage.setItem("filterContent", "true");
+      overlay.style.display = "none";
+    }
+    function rejectContent() {
+      overlay.style.display = "none";
+      ageCheck.style.display = "flex";
+    }
+    function setMinor(isMinor) {
+      filterEnabled = isMinor;
+      localStorage.setItem("filterContent", isMinor ? "true" : "false");
+      ageCheck.style.display = "none";
+    }
+
+    window.onload = () => {
+      const decision = localStorage.getItem("filterContent");
+      if (decision === null) {
+        overlay.style.display = "flex";
+      } else {
+        filterEnabled = (decision === "true");
+        overlay.style.display = "none";
+        ageCheck.style.display = "none";
+      }
+
+      // كشف اتجاه النص حسب اللغة
+      input.addEventListener("input", () => {
+        const value = input.value.trim();
+        if (/[\u0600-\u06FF]/.test(value)) {
+          input.style.direction = "rtl";
+        } else {
+          input.style.direction = "ltr";
+        }
+
+        // إظهار رسالة الدعم لكلمة انتحار
+        if (value.includes("انتحار")) {
+          supportMessage.style.display = "block";
+        } else {
+          supportMessage.style.display = "none";
+        }
+      });
+    };
+
     document.getElementById("searchForm").addEventListener("submit", function (e) {
       e.preventDefault();
-      const query = document.getElementById("searchInput").value;
-      window.location.href = `result.html?q=${encodeURIComponent(query)}`;
+      let query = input.value.trim();
+
+      if (!query) return alert("الرجاء كتابة كلمة للبحث.");
+
+      if (filterEnabled) {
+        // استبدال الكلمات الضارة بـ "محتوى ضار"
+        query = query.replace(/عنف/gi, "محتوى ضار");
+        query = query.replace(/إباحية/gi, "محتوى ضار");
+      }
+
+      window.location.href = `result.html?q=${encodeURIComponent(query)}&filter=${filterEnabled ? "true" : "false"}`;
     });
   </script>
 </body>
